@@ -1,0 +1,262 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CompanyRole {
+  MEMBER
+  ADMIN
+  OWNER
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum JoinRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum PaymentType {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  PIX
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
+model User {
+  id              BigInt   @id @default(autoincrement())
+  name            String
+  email           String   @unique
+  passwordHash    String   @map("password_hash")
+  cpf             String   @unique
+  phone           String
+  isPlatformAdmin Boolean  @default(false) @map("is_platform_admin")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  companyRequests     CompanyRequest[]
+  companyJoinRequests CompanyJoinRequest[]
+  companyMembers      CompanyMember[]
+
+  @@map("user")
+}
+
+model Company {
+  id         BigInt   @id @default(autoincrement())
+  name       String
+  slug       String   @unique
+  inviteCode String   @unique @map("invite_code")
+  email      String?
+  phone      String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  joinRequests CompanyJoinRequest[]
+  members      CompanyMember[]
+  employees    Employee[]
+  customers    Customer[]
+  products     Product[]
+  points       Point[]
+  sales        Sale[]
+
+  @@map("company")
+}
+
+model CompanyRequest {
+  id        BigInt        @id @default(autoincrement())
+  userId    BigInt        @map("user_id")
+  user      User          @relation(fields: [userId], references: [id])
+  name      String
+  email     String
+  phone     String
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("company_request")
+}
+
+model CompanyJoinRequest {
+  id        BigInt            @id @default(autoincrement())
+  userId    BigInt            @map("user_id")
+  user      User              @relation(fields: [userId], references: [id])
+  companyId BigInt            @map("company_id")
+  company   Company           @relation(fields: [companyId], references: [id])
+  status    JoinRequestStatus @default(PENDING)
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  @@map("company_join_request")
+}
+
+model Employee {
+  id        BigInt   @id @default(autoincrement())
+  companyId BigInt   @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id])
+  position  String
+  salary    Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member CompanyMember?
+
+  @@map("employee")
+}
+
+model CompanyMember {
+  id         BigInt       @id @default(autoincrement())
+  userId     BigInt       @map("user_id")
+  user       User         @relation(fields: [userId], references: [id])
+  companyId  BigInt       @map("company_id")
+  company    Company      @relation(fields: [companyId], references: [id])
+  employeeId BigInt       @unique @map("employee_id")
+  employee   Employee     @relation(fields: [employeeId], references: [id])
+  role       CompanyRole  @default(MEMBER)
+  status     MemberStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  @@unique([userId, companyId])
+  @@map("company_member")
+}
+
+model Customer {
+  id        BigInt   @id @default(autoincrement())
+  companyId BigInt   @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sales Sale[]
+
+  @@map("customer")
+}
+
+model Product {
+  id        BigInt   @id @default(autoincrement())
+  companyId BigInt   @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id])
+  sku       String
+  name      String
+  price     Decimal  @db.Decimal(10, 2)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  saleItems SaleItem[]
+  inventory Inventory[]
+
+  @@unique([sku, companyId])
+  @@map("product")
+}
+
+model Point {
+  id        BigInt   @id @default(autoincrement())
+  companyId BigInt   @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sales     Sale[]
+  inventory Inventory[]
+
+  @@map("point")
+}
+
+model Sale {
+  id            BigInt        @id @default(autoincrement())
+  customerId    BigInt        @map("customer_id")
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  pointId       BigInt        @map("point_id")
+  point         Point         @relation(fields: [pointId], references: [id])
+  companyId     BigInt        @map("company_id")
+  company       Company       @relation(fields: [companyId], references: [id])
+  total         Decimal       @db.Decimal(10, 2)
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  date          DateTime      @default(now())
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  items    SaleItem[]
+  payments Payment[]
+
+  @@map("sale")
+}
+
+model SaleItem {
+  id        BigInt   @id @default(autoincrement())
+  saleId    BigInt   @map("sale_id")
+  sale      Sale     @relation(fields: [saleId], references: [id])
+  productId BigInt   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Decimal  @db.Decimal(10, 3)
+  unitPrice Decimal  @map("unit_price") @db.Decimal(10, 2)
+  subtotal  Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("sale_item")
+}
+
+model Payment {
+  id        BigInt      @id @default(autoincrement())
+  saleId    BigInt      @map("sale_id")
+  sale      Sale        @relation(fields: [saleId], references: [id])
+  amount    Decimal     @db.Decimal(10, 2)
+  type      PaymentType
+  date      DateTime    @default(now())
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  @@map("payment")
+}
+
+model Inventory {
+  id          BigInt   @id @default(autoincrement())
+  productId   BigInt   @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id])
+  pointId     BigInt   @map("point_id")
+  point       Point    @relation(fields: [pointId], references: [id])
+  quantity    Int
+  minQuantity Int      @map("min_quantity")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([productId, pointId])
+  @@map("inventory")
+}
