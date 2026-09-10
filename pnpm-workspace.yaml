@@ -3,7 +3,7 @@ packages:
   - "packages/*"
 allowBuilds:
   '@prisma/engines': true
-  esbuild: set this to true or false
+  esbuild: true
   msgpackr-extract: set this to true or false
   prisma: true
   workerd: set this to true or false

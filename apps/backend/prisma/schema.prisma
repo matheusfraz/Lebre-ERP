@@ -44,11 +44,6 @@ enum PaymentType {
   OTHER
 }
 
-enum PaymentStatus {
-  PENDING
-  PAID
-}
-
 model User {
   id              BigInt   @id @default(autoincrement())
   name            String
@@ -207,7 +202,7 @@ model Sale {
   companyId     BigInt        @map("company_id")
   company       Company       @relation(fields: [companyId], references: [id])
   total         Decimal       @db.Decimal(10, 2)
-  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  amountPaid Decimal @default(0) @db.Decimal(10, 2) @map("amount_paid")
   date          DateTime      @default(now())
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
